@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +10,10 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Tabs } from "@/components/ui/tabs";
-import { Building2, Plus, Search, MapPin, Bed, Bath, Maximize } from "lucide-react";
+import { Building2, Plus, Search, MapPin, Bed, Bath, Maximize, Map, LayoutGrid, Eye } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+
+const PropertyMap = dynamic(() => import("@/components/property-map"), { ssr: false });
 
 interface Property {
   id: string;
@@ -30,6 +34,8 @@ interface Property {
   bedrooms: number | null;
   bathrooms: number | null;
   garages: number | null;
+  lat: number | null;
+  lng: number | null;
   owner: { firstName: string; lastName: string } | null;
 }
 
@@ -75,6 +81,7 @@ export default function PropertiesPage() {
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
   const [filterOp, setFilterOp] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
   const [form, setForm] = useState({
     title: "", propertyType: "", operationType: "", status: "DISPONIBLE",
     price: "", currency: "ARS", province: "", city: "", neighborhood: "",
@@ -145,15 +152,25 @@ export default function PropertiesPage() {
 
       <Tabs tabs={opTabs} active={filterOp} onChange={setFilterOp} />
 
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-        <input
-          type="text"
-          placeholder="Buscar por título, ciudad o barrio..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Buscar por título, ciudad o barrio..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+        <div className="flex rounded-lg border border-gray-700 overflow-hidden">
+          <button onClick={() => setViewMode("grid")} className={`p-2.5 ${viewMode === "grid" ? "bg-emerald-600/20 text-emerald-400" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+            <LayoutGrid size={16} />
+          </button>
+          <button onClick={() => setViewMode("map")} className={`p-2.5 ${viewMode === "map" ? "bg-emerald-600/20 text-emerald-400" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+            <Map size={16} />
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -165,47 +182,64 @@ export default function PropertiesPage() {
             <p className="text-gray-400">No hay propiedades</p>
           </div>
         </Card>
+      ) : viewMode === "map" ? (
+        <PropertyMap
+          height="500px"
+          markers={filtered
+            .filter((p) => p.lat && p.lng)
+            .map((p) => ({
+              lat: p.lat!,
+              lng: p.lng!,
+              title: p.title,
+              popup: `<div style="min-width:180px"><b>${p.title}</b><br/><span style="color:#888">${p.street || ""} ${p.streetNumber || ""}, ${p.neighborhood || p.city || ""}</span>${p.price ? `<br/><b style="color:#10b981">${p.currency} ${p.price.toLocaleString("es-AR")}</b>` : ""}</div>`,
+            }))}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((p) => (
-            <Card key={p.id} className="hover:border-gray-700 transition-colors">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-semibold text-white text-sm">{p.title}</h3>
-                  {p.street && (
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                      <MapPin size={10} /> {p.street} {p.streetNumber}, {p.city}
-                    </p>
-                  )}
+            <Link key={p.id} href={`/dashboard/properties/${p.id}`}>
+              <Card className="hover:border-emerald-600/50 transition-colors cursor-pointer h-full">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="font-semibold text-white text-sm">{p.title}</h3>
+                    {p.street && (
+                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <MapPin size={10} /> {p.street} {p.streetNumber}, {p.city}
+                      </p>
+                    )}
+                  </div>
+                  <Badge variant={statusBadge(p.status) as "success" | "warning" | "info" | "danger" | "default"}>
+                    {p.status}
+                  </Badge>
                 </div>
-                <Badge variant={statusBadge(p.status) as "success" | "warning" | "info" | "danger" | "default"}>
-                  {p.status}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2 mb-3">
-                <Badge variant="default">{p.propertyType}</Badge>
-                <Badge variant={p.operationType === "VENTA" ? "info" : "success"}>
-                  {p.operationType === "ALQUILER_TEMPORAL" ? "Temporal" : p.operationType}
-                </Badge>
-              </div>
-              {p.price && (
-                <p className="text-lg font-bold text-white mb-3">
-                  {formatCurrency(p.price, p.currency)}
-                  {p.operationType !== "VENTA" && <span className="text-xs text-gray-500 font-normal">/mes</span>}
-                </p>
-              )}
-              <div className="flex items-center gap-4 text-xs text-gray-400">
-                {p.rooms && <span className="flex items-center gap-1"><Maximize size={12} />{p.rooms} amb</span>}
-                {p.bedrooms && <span className="flex items-center gap-1"><Bed size={12} />{p.bedrooms} dorm</span>}
-                {p.bathrooms && <span className="flex items-center gap-1"><Bath size={12} />{p.bathrooms} baños</span>}
-                {p.totalArea && <span>{p.totalArea} m²</span>}
-              </div>
-              {p.owner && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Propietario: {p.owner.firstName} {p.owner.lastName}
-                </p>
-              )}
-            </Card>
+                <div className="flex items-center gap-2 mb-3">
+                  <Badge variant="default">{p.propertyType}</Badge>
+                  <Badge variant={p.operationType === "VENTA" ? "info" : "success"}>
+                    {p.operationType === "ALQUILER_TEMPORAL" ? "Temporal" : p.operationType}
+                  </Badge>
+                </div>
+                {p.price && (
+                  <p className="text-lg font-bold text-white mb-3">
+                    {formatCurrency(p.price, p.currency)}
+                    {p.operationType !== "VENTA" && <span className="text-xs text-gray-500 font-normal">/mes</span>}
+                  </p>
+                )}
+                <div className="flex items-center gap-4 text-xs text-gray-400">
+                  {p.rooms && <span className="flex items-center gap-1"><Maximize size={12} />{p.rooms} amb</span>}
+                  {p.bedrooms && <span className="flex items-center gap-1"><Bed size={12} />{p.bedrooms} dorm</span>}
+                  {p.bathrooms && <span className="flex items-center gap-1"><Bath size={12} />{p.bathrooms} baños</span>}
+                  {p.totalArea && <span>{p.totalArea} m²</span>}
+                </div>
+                {p.owner && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Propietario: {p.owner.firstName} {p.owner.lastName}
+                  </p>
+                )}
+                <div className="mt-3 pt-3 border-t border-gray-800 flex items-center justify-end">
+                  <span className="text-xs text-emerald-400 flex items-center gap-1"><Eye size={12} /> Ver detalle</span>
+                </div>
+              </Card>
+            </Link>
           ))}
         </div>
       )}
