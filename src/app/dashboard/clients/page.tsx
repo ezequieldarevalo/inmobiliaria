@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import { Users, Plus, Phone, Mail } from "lucide-react";
 
 interface Client {
@@ -110,7 +111,8 @@ export default function ClientsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((c) => (
-            <Card key={c.id}>
+            <Link key={c.id} href={`/dashboard/clients/${c.id}`}>
+            <Card className="hover:border-emerald-500/30 transition-colors cursor-pointer">
               <div className="flex items-start justify-between">
                 <h3 className="font-semibold text-white">{c.firstName} {c.lastName}</h3>
                 <Badge variant={typeBadge(c.clientType) as "success" | "warning" | "info" | "default"}>{c.clientType}</Badge>
@@ -122,6 +124,7 @@ export default function ClientsPage() {
                 {c.searchZone && <p className="text-xs text-gray-500">Busca en: {c.searchZone}</p>}
               </div>
             </Card>
+            </Link>
           ))}
         </div>
       )}

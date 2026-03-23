@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, MapPin, Bed, Bath, Maximize, Car, Building2, Ruler,
   Calendar, FileText, User, Phone, Mail, Edit, Trash2, Compass,
-  Wifi, Waves, Dumbbell, Shield, TreePine, ChefHat, Wind,
+  Wifi, Waves, Dumbbell, Shield, TreePine, ChefHat, Wind, Users, Star, Share2, Check,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -99,6 +99,8 @@ export default function PropertyDetailPage() {
   const router = useRouter();
   const [property, setProperty] = useState<PropertyDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [matchedClients, setMatchedClients] = useState<any[]>([]);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch(`/api/properties/${params.id}`)
@@ -107,6 +109,15 @@ export default function PropertyDetailPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [params.id]);
+
+  useEffect(() => {
+    if (property?.id) {
+      fetch(`/api/match/property/${property.id}`)
+        .then((r) => r.json())
+        .then((data) => Array.isArray(data) ? setMatchedClients(data) : setMatchedClients([]))
+        .catch(() => {});
+    }
+  }, [property?.id]);
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" /></div>;
   if (!property) return <div className="text-center py-20"><p className="text-gray-500">Propiedad no encontrada</p></div>;
@@ -145,6 +156,13 @@ export default function PropertyDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => {
+            const url = `${window.location.origin}/property/${property.id}`;
+            navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+          }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-gray-700 bg-gray-800 text-gray-300 hover:text-white hover:border-gray-600 transition-colors">
+            {copied ? <Check size={14} className="text-emerald-400" /> : <Share2 size={14} />}
+            {copied ? "Copiado" : "Compartir"}
+          </button>
           <Badge variant={STATUS_COLORS[property.status] || "default"} className="text-xs">{property.status}</Badge>
         </div>
       </div>
@@ -255,6 +273,45 @@ export default function PropertyDetailPage() {
                     </div>
                     <p className="text-sm font-bold text-white">{formatCurrency(c.amount, "ARS")}/mes</p>
                   </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Matched interested clients */}
+          {matchedClients.length > 0 && (
+            <Card>
+              <h2 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
+                <Users size={16} className="text-purple-400" /> Interesados que coinciden ({matchedClients.length})
+              </h2>
+              <div className="space-y-3">
+                {matchedClients.map((m: any) => (
+                  <Link key={m.client.id} href={`/dashboard/clients/${m.client.id}`} className="block">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-gray-800/50 border border-gray-800 hover:border-purple-500/30 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-medium text-white truncate">{m.client.firstName} {m.client.lastName}</p>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Star size={12} className={m.matchPercent >= 70 ? "text-yellow-400 fill-yellow-400" : m.matchPercent >= 40 ? "text-yellow-400" : "text-gray-600"} />
+                            <span className={`text-xs font-bold ${m.matchPercent >= 70 ? "text-emerald-400" : m.matchPercent >= 40 ? "text-yellow-400" : "text-gray-500"}`}>
+                              {m.matchPercent}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {m.reasons.map((r: string, i: number) => (
+                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-purple-600/15 text-purple-300 border border-purple-600/20">{r}</span>
+                          ))}
+                        </div>
+                        {(m.client.phone || m.client.email) && (
+                          <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
+                            {m.client.phone && <span className="flex items-center gap-1"><Phone size={10} /> {m.client.phone}</span>}
+                            {m.client.email && <span className="flex items-center gap-1"><Mail size={10} /> {m.client.email}</span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
                 ))}
               </div>
             </Card>

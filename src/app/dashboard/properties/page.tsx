@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Tabs } from "@/components/ui/tabs";
-import { Building2, Plus, Search, MapPin, Bed, Bath, Maximize, Map, LayoutGrid, Eye } from "lucide-react";
+import { Building2, Plus, Search, MapPin, Bed, Bath, Maximize, Map, LayoutGrid, Eye, Crosshair, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 const PropertyMap = dynamic(() => import("@/components/property-map"), { ssr: false });
@@ -87,7 +87,10 @@ export default function PropertiesPage() {
     price: "", currency: "ARS", province: "", city: "", neighborhood: "",
     street: "", streetNumber: "", totalArea: "", coveredArea: "",
     rooms: "", bedrooms: "", bathrooms: "", garages: "", description: "",
+    lat: "", lng: "",
   });
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeMsg, setGeocodeMsg] = useState("");
 
   const loadProperties = () => {
     fetch("/api/properties")
@@ -98,6 +101,26 @@ export default function PropertiesPage() {
   };
 
   useEffect(() => { loadProperties(); }, []);
+
+  const handleGeocode = async () => {
+    const q = [form.street, form.streetNumber, form.neighborhood, form.city, form.province].filter(Boolean).join(", ");
+    if (!q) return;
+    setGeocoding(true);
+    setGeocodeMsg("");
+    try {
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (data.lat && data.lng) {
+        setForm((f) => ({ ...f, lat: String(data.lat), lng: String(data.lng) }));
+        setGeocodeMsg("Ubicación encontrada");
+      } else {
+        setGeocodeMsg("No se encontró la dirección");
+      }
+    } catch {
+      setGeocodeMsg("Error al geocodificar");
+    }
+    setGeocoding(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +136,8 @@ export default function PropertiesPage() {
         bedrooms: form.bedrooms ? parseInt(form.bedrooms) : null,
         bathrooms: form.bathrooms ? parseInt(form.bathrooms) : null,
         garages: form.garages ? parseInt(form.garages) : null,
+        lat: form.lat ? parseFloat(form.lat) : null,
+        lng: form.lng ? parseFloat(form.lng) : null,
       }),
     });
     setShowModal(false);
@@ -121,6 +146,7 @@ export default function PropertiesPage() {
       price: "", currency: "ARS", province: "", city: "", neighborhood: "",
       street: "", streetNumber: "", totalArea: "", coveredArea: "",
       rooms: "", bedrooms: "", bathrooms: "", garages: "", description: "",
+      lat: "", lng: "",
     });
     loadProperties();
   };
@@ -265,6 +291,15 @@ export default function PropertiesPage() {
               <Input label="Calle" value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
               <Input label="Nro" value={form.streetNumber} onChange={(e) => setForm({ ...form, streetNumber: e.target.value })} />
             </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={handleGeocode} disabled={geocoding}
+              className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg border border-emerald-600/30 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 disabled:opacity-50 transition-colors">
+              {geocoding ? <Loader2 size={14} className="animate-spin" /> : <Crosshair size={14} />}
+              Ubicar en mapa
+            </button>
+            {geocodeMsg && <span className={`text-xs ${form.lat ? "text-emerald-400" : "text-yellow-400"}`}>{geocodeMsg}</span>}
+            {form.lat && form.lng && <span className="text-[10px] text-gray-500">({form.lat}, {form.lng})</span>}
           </div>
           <div className="grid grid-cols-4 gap-4">
             <Input label="Ambientes" type="number" value={form.rooms} onChange={(e) => setForm({ ...form, rooms: e.target.value })} />

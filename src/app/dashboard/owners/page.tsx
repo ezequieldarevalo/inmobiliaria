@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import { UserCheck, Plus, Phone, Mail } from "lucide-react";
 
 interface Owner {
@@ -77,7 +78,8 @@ export default function OwnersPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((o) => (
-            <Card key={o.id}>
+            <Link key={o.id} href={`/dashboard/owners/${o.id}`}>
+            <Card className="hover:border-emerald-500/30 transition-colors cursor-pointer">
               <h3 className="font-semibold text-white">{o.firstName} {o.lastName}</h3>
               <div className="mt-2 space-y-1 text-sm">
                 {o.phone && <p className="text-gray-400 flex items-center gap-2"><Phone size={12} /> {o.phone}</p>}
@@ -97,6 +99,7 @@ export default function OwnersPage() {
                 </div>
               )}
             </Card>
+            </Link>
           ))}
         </div>
       )}

@@ -19,11 +19,13 @@ import {
   Shield,
   Menu,
   X,
+  Bell,
 } from "lucide-react";
 import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
+  { href: "/dashboard/alerts", icon: Bell, label: "Alertas" },
   { href: "/dashboard/properties", icon: Building2, label: "Propiedades" },
   { href: "/dashboard/owners", icon: UserCheck, label: "Propietarios" },
   { href: "/dashboard/clients", icon: Users, label: "Interesados" },
