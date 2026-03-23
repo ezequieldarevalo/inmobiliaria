@@ -20,6 +20,8 @@ import {
   Menu,
   X,
   Bell,
+  Megaphone,
+  Target,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -27,8 +29,10 @@ const navItems = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/dashboard/alerts", icon: Bell, label: "Alertas" },
   { href: "/dashboard/properties", icon: Building2, label: "Propiedades" },
+  { href: "/dashboard/publications", icon: Megaphone, label: "Publicaciones" },
   { href: "/dashboard/owners", icon: UserCheck, label: "Propietarios" },
   { href: "/dashboard/clients", icon: Users, label: "Interesados" },
+  { href: "/dashboard/leads", icon: Target, label: "Tracking Leads" },
   { href: "/dashboard/appointments", icon: Calendar, label: "Agenda" },
   { href: "/dashboard/contracts", icon: FileText, label: "Contratos" },
   { href: "/dashboard/payments", icon: CreditCard, label: "Cobros" },

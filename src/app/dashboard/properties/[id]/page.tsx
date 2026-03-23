@@ -11,8 +11,11 @@ import {
   ArrowLeft, MapPin, Bed, Bath, Maximize, Car, Building2, Ruler,
   Calendar, FileText, User, Phone, Mail, Edit, Trash2, Compass,
   Wifi, Waves, Dumbbell, Shield, TreePine, ChefHat, Wind, Users, Star, Share2, Check,
+  Megaphone, Image as ImageIcon,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { PhotoGallery, PhotoManager } from "@/components/photo-manager";
+import { PublicationGenerator } from "@/components/publication-generator";
 
 const PropertyMap = dynamic(() => import("@/components/property-map"), { ssr: false });
 
@@ -48,6 +51,8 @@ interface PropertyDetail {
   disposition: string | null;
   condition: string | null;
   amenities: string | null;
+  images: string | null;
+  coverIndex: number;
   portalPublished: boolean;
   createdAt: string;
   owner: { id: string; firstName: string; lastName: string; phone: string | null; email: string | null } | null;
@@ -101,6 +106,9 @@ export default function PropertyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [matchedClients, setMatchedClients] = useState<any[]>([]);
   const [copied, setCopied] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
+  const [showPublish, setShowPublish] = useState(false);
+  const [savingPhotos, setSavingPhotos] = useState(false);
 
   useEffect(() => {
     fetch(`/api/properties/${params.id}`)
@@ -185,6 +193,59 @@ export default function PropertyDetailPage() {
         {property.condition && <Badge variant="default" className="text-sm px-3 py-1.5">{CONDITION_LABELS[property.condition] || property.condition}</Badge>}
         {property.portalPublished && <Badge variant="warning" className="text-xs">Publicada en portales</Badge>}
       </div>
+
+      {/* Action buttons */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setShowPhotos(!showPhotos)}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm rounded-xl border transition-colors ${
+            showPhotos ? "bg-emerald-600/20 border-emerald-600/40 text-emerald-400" : "bg-gray-800 border-gray-700 text-gray-300 hover:text-white hover:border-gray-600"
+          }`}
+        >
+          <ImageIcon size={16} /> Fotos {(() => { try { const imgs = property.images ? JSON.parse(property.images) : []; return `(${imgs.length})`; } catch { return "(0)"; } })()}
+        </button>
+        <button
+          onClick={() => setShowPublish(!showPublish)}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm rounded-xl border transition-colors ${
+            showPublish ? "bg-yellow-600/20 border-yellow-600/40 text-yellow-400" : "bg-gray-800 border-gray-700 text-gray-300 hover:text-white hover:border-gray-600"
+          }`}
+        >
+          <Megaphone size={16} /> Publicar propiedad
+        </button>
+      </div>
+
+      {/* Photo Gallery / Manager */}
+      {showPhotos && (
+        <Card>
+          <PhotoManager
+            images={(() => { try { return property.images ? JSON.parse(property.images) : []; } catch { return []; } })()}
+            coverIndex={property.coverIndex || 0}
+            onChange={async (imgs, ci) => {
+              setSavingPhotos(true);
+              try {
+                await fetch(`/api/properties/${property.id}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ images: JSON.stringify(imgs), coverIndex: ci }),
+                });
+                setProperty({ ...property, images: JSON.stringify(imgs), coverIndex: ci });
+              } catch {}
+              setSavingPhotos(false);
+            }}
+          />
+          {savingPhotos && <p className="text-xs text-emerald-400 mt-2">Guardando...</p>}
+        </Card>
+      )}
+
+      {/* Photo Gallery Preview (when not in edit mode) */}
+      {!showPhotos && (() => { try { const imgs = property.images ? JSON.parse(property.images) as string[] : []; return imgs.length > 0 ? (
+        <PhotoGallery images={imgs} coverIndex={property.coverIndex || 0} />
+      ) : null; } catch { return null; } })()}
+
+      {/* Publication Generator */}
+      {showPublish && (
+        <PublicationGenerator property={property} />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main column */}

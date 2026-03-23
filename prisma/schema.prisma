@@ -45,6 +45,7 @@ model Agency {
   appointments          Appointment[]
   transactions          Transaction[]
   planRequests          PlanChangeRequest[]
+  publications          Publication[]
 }
 
 model Property {
@@ -88,6 +89,7 @@ model Property {
   
   // Media
   images            String?   // JSON array of image URLs
+  coverIndex        Int       @default(0) // Index of cover photo
   videoUrl          String?
   virtualTourUrl    String?
   
@@ -99,6 +101,7 @@ model Property {
   
   contracts         Contract[]
   appointments      Appointment[]
+  publications      Publication[]
   
   // Portal integration
   portalPublished   Boolean   @default(false)
@@ -259,6 +262,27 @@ model Transaction {
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model Publication {
+  id              String    @id @default(cuid())
+  propertyId      String
+  property        Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  portal          String    // ZONAPROP, MERCADOLIBRE, ARGENPROP, WHATSAPP, PORTAL_PROPIO
+  status          String    @default("BORRADOR") // BORRADOR, PUBLICADA, PAUSADA, FINALIZADA
+  externalUrl     String?
+  externalId      String?
+  generatedTitle  String?
+  generatedDesc   String?
+  publishedAt     DateTime?
+  lastSyncAt      DateTime?
+  notes           String?
+  
+  agencyId        String
+  agency          Agency    @relation(fields: [agencyId], references: [id])
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model PlanChangeRequest {

@@ -12,6 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { Tabs } from "@/components/ui/tabs";
 import { Building2, Plus, Search, MapPin, Bed, Bath, Maximize, Map, LayoutGrid, Eye, Crosshair, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { PhotoManager } from "@/components/photo-manager";
 
 const PropertyMap = dynamic(() => import("@/components/property-map"), { ssr: false });
 
@@ -36,6 +37,8 @@ interface Property {
   garages: number | null;
   lat: number | null;
   lng: number | null;
+  images: string | null;
+  coverIndex: number;
   owner: { firstName: string; lastName: string } | null;
 }
 
@@ -87,7 +90,7 @@ export default function PropertiesPage() {
     price: "", currency: "ARS", province: "", city: "", neighborhood: "",
     street: "", streetNumber: "", totalArea: "", coveredArea: "",
     rooms: "", bedrooms: "", bathrooms: "", garages: "", description: "",
-    lat: "", lng: "",
+    lat: "", lng: "", images: "[]", coverIndex: 0,
   });
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeMsg, setGeocodeMsg] = useState("");
@@ -138,6 +141,8 @@ export default function PropertiesPage() {
         garages: form.garages ? parseInt(form.garages) : null,
         lat: form.lat ? parseFloat(form.lat) : null,
         lng: form.lng ? parseFloat(form.lng) : null,
+        images: form.images,
+        coverIndex: form.coverIndex,
       }),
     });
     setShowModal(false);
@@ -146,7 +151,7 @@ export default function PropertiesPage() {
       price: "", currency: "ARS", province: "", city: "", neighborhood: "",
       street: "", streetNumber: "", totalArea: "", coveredArea: "",
       rooms: "", bedrooms: "", bathrooms: "", garages: "", description: "",
-      lat: "", lng: "",
+      lat: "", lng: "", images: "[]", coverIndex: 0,
     });
     loadProperties();
   };
@@ -224,7 +229,22 @@ export default function PropertiesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((p) => (
             <Link key={p.id} href={`/dashboard/properties/${p.id}`}>
-              <Card className="hover:border-emerald-600/50 transition-colors cursor-pointer h-full">
+              <Card className="hover:border-emerald-600/50 transition-colors cursor-pointer h-full !p-0 overflow-hidden">
+                {/* Cover image */}
+                {(() => {
+                  try {
+                    const imgs = p.images ? JSON.parse(p.images) as string[] : [];
+                    const coverImg = imgs[p.coverIndex || 0] || imgs[0];
+                    if (coverImg) return (
+                      <div className="h-36 w-full overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={coverImg} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    );
+                  } catch {}
+                  return null;
+                })()}
+                <div className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="font-semibold text-white text-sm">{p.title}</h3>
@@ -263,6 +283,7 @@ export default function PropertiesPage() {
                 )}
                 <div className="mt-3 pt-3 border-t border-gray-800 flex items-center justify-end">
                   <span className="text-xs text-emerald-400 flex items-center gap-1"><Eye size={12} /> Ver detalle</span>
+                </div>
                 </div>
               </Card>
             </Link>
@@ -311,6 +332,11 @@ export default function PropertiesPage() {
             <Input label="Sup. total (m²)" type="number" value={form.totalArea} onChange={(e) => setForm({ ...form, totalArea: e.target.value })} />
             <Input label="Sup. cubierta (m²)" type="number" value={form.coveredArea} onChange={(e) => setForm({ ...form, coveredArea: e.target.value })} />
           </div>
+          <PhotoManager
+            images={(() => { try { return JSON.parse(form.images) as string[]; } catch { return []; } })()}
+            coverIndex={form.coverIndex}
+            onChange={(imgs, ci) => setForm({ ...form, images: JSON.stringify(imgs), coverIndex: ci })}
+          />
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={() => setShowModal(false)} className="flex-1">Cancelar</Button>
             <Button type="submit" className="flex-1">Guardar</Button>
