@@ -1,0 +1,277 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  name         String?
+  role         String   @default("USER") // USER, ADMIN, SUPERADMIN
+  agencyId     String?
+  agency       Agency?  @relation(fields: [agencyId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Agency {
+  id                    String    @id @default(cuid())
+  name                  String
+  email                 String?
+  cuit                  String?
+  phone                 String?
+  province              String?
+  city                  String?
+  street                String?
+  streetNumber          String?
+  logoUrl               String?
+  schedule              String?
+  description           String?
+  matricula             String?   // Matrícula inmobiliaria
+  plan                  String    @default("STARTER")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  users                 User[]
+  properties            Property[]
+  clients               Client[]
+  owners                Owner[]
+  contracts             Contract[]
+  appointments          Appointment[]
+  transactions          Transaction[]
+  planRequests          PlanChangeRequest[]
+}
+
+model Property {
+  id                String    @id @default(cuid())
+  title             String
+  description       String?
+  propertyType      String    // CASA, DEPARTAMENTO, LOCAL, TERRENO, OFICINA, GALPON, CAMPO, PH, COCHERA
+  operationType     String    // VENTA, ALQUILER, ALQUILER_TEMPORAL
+  status            String    @default("DISPONIBLE") // DISPONIBLE, RESERVADA, VENDIDA, ALQUILADA, SUSPENDIDA
+  price             Float?
+  currency          String    @default("USD") // USD, ARS
+  expensas          Float?
+  
+  // Location
+  province          String?
+  city              String?
+  neighborhood      String?
+  street            String?
+  streetNumber      String?
+  floor             String?
+  apartment         String?
+  zipCode           String?
+  lat               Float?
+  lng               Float?
+  
+  // Characteristics
+  totalArea         Float?    // m2 totales
+  coveredArea       Float?    // m2 cubiertos
+  rooms             Int?      // ambientes
+  bedrooms          Int?      // dormitorios
+  bathrooms         Int?      // baños
+  garages           Int?      // cocheras
+  age               Int?      // antigüedad
+  floors            Int?      // pisos
+  orientation       String?   // N, S, E, O, NE, NO, SE, SO
+  disposition       String?   // FRENTE, CONTRAFRENTE, LATERAL, INTERNO
+  condition         String?   // EXCELENTE, MUY_BUENO, BUENO, REGULAR, A_RECICLAR, EN_CONSTRUCCION, A_ESTRENAR, POZO
+  
+  // Amenities (stored as comma-separated)
+  amenities         String?   // PILETA,QUINCHO,PARRILLA,SUM,SEGURIDAD,LAUNDRY,GYM,BALCON,TERRAZA,JARDIN,ASCENSOR
+  
+  // Media
+  images            String?   // JSON array of image URLs
+  videoUrl          String?
+  virtualTourUrl    String?
+  
+  // Relations
+  agencyId          String
+  agency            Agency    @relation(fields: [agencyId], references: [id])
+  ownerId           String?
+  owner             Owner?    @relation(fields: [ownerId], references: [id])
+  
+  contracts         Contract[]
+  appointments      Appointment[]
+  
+  // Portal integration
+  portalPublished   Boolean   @default(false)
+  portalIds         String?   // JSON: {zonaprop: "xxx", argenprop: "yyy", mercadolibre: "zzz"}
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model Owner {
+  id            String    @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String?
+  dni           String?
+  cuit          String?
+  province      String?
+  city          String?
+  street        String?
+  streetNumber  String?
+  bankAlias     String?
+  bankCbu       String?
+  notes         String?
+  
+  agencyId      String
+  agency        Agency    @relation(fields: [agencyId], references: [id])
+  
+  properties    Property[]
+  contracts     Contract[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Client {
+  id            String    @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String?
+  dni           String?
+  clientType    String    @default("INTERESADO") // INTERESADO, INQUILINO, COMPRADOR, GARANTE
+  source        String?   // PORTAL, INSTAGRAM, FACEBOOK, REFERIDO, CARTEL, OTRO
+  
+  // Search preferences
+  searchType    String?   // VENTA, ALQUILER
+  searchZone    String?
+  budgetMin     Float?
+  budgetMax     Float?
+  budgetCurrency String?
+  searchRooms   String?   // e.g., "2,3"
+  searchPropertyType String? // e.g., "DEPARTAMENTO,CASA"
+  notes         String?
+  
+  agencyId      String
+  agency        Agency    @relation(fields: [agencyId], references: [id])
+  
+  contracts     Contract[]
+  appointments  Appointment[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Contract {
+  id                String    @id @default(cuid())
+  contractType      String    // ALQUILER, VENTA, ALQUILER_TEMPORAL
+  status            String    @default("VIGENTE") // VIGENTE, FINALIZADO, RESCINDIDO, PENDIENTE
+  
+  startDate         DateTime
+  endDate           DateTime?
+  
+  // Financial
+  amount            Float               // Monto mensual o precio de venta
+  currency          String    @default("ARS")
+  adjustmentType    String?   // ICL, IPC, CASA_PROPIA, LIBRE
+  adjustmentPeriod  Int?      // Cada cuantos meses se ajusta
+  depositMonths     Int?      // Meses de depósito
+  depositAmount     Float?
+  commissionPercent Float?    // Comisión de la inmobiliaria
+  commissionAmount  Float?
+  
+  // Guarantee
+  guaranteeType     String?   // GARANTE, CAUCION, SEGURO_CAUCION
+  guaranteeDetails  String?
+  
+  propertyId        String
+  property          Property  @relation(fields: [propertyId], references: [id])
+  clientId          String
+  client            Client    @relation(fields: [clientId], references: [id])
+  ownerId           String?
+  owner             Owner?    @relation(fields: [ownerId], references: [id])
+  agencyId          String
+  agency            Agency    @relation(fields: [agencyId], references: [id])
+  
+  payments          Payment[]
+  
+  notes             String?
+  documentUrl       String?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model Payment {
+  id            String    @id @default(cuid())
+  contractId    String
+  contract      Contract  @relation(fields: [contractId], references: [id])
+  
+  period        String    // "2026-03" formato año-mes
+  dueDate       DateTime
+  amount        Float
+  currency      String    @default("ARS")
+  status        String    @default("PENDIENTE") // PENDIENTE, PAGADO, VENCIDO, PARCIAL
+  paidDate      DateTime?
+  paidAmount    Float?
+  paymentMethod String?   // TRANSFERENCIA, EFECTIVO, CHEQUE, MERCADOPAGO
+  receiptUrl    String?
+  notes         String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Appointment {
+  id            String    @id @default(cuid())
+  title         String
+  date          DateTime
+  time          String?
+  duration      Int?      @default(30) // minutos
+  status        String    @default("PENDIENTE") // PENDIENTE, CONFIRMADA, REALIZADA, CANCELADA
+  type          String    @default("VISITA") // VISITA, FIRMA, ENTREGA_LLAVES, TASACION, REUNION
+  notes         String?
+  
+  propertyId    String?
+  property      Property? @relation(fields: [propertyId], references: [id])
+  clientId      String?
+  client        Client?   @relation(fields: [clientId], references: [id])
+  agencyId      String
+  agency        Agency    @relation(fields: [agencyId], references: [id])
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Transaction {
+  id            String    @id @default(cuid())
+  type          String    // INGRESO, EGRESO
+  category      String    // ALQUILER, COMISION, EXPENSAS, IMPUESTO, HONORARIO, MANTENIMIENTO, OTRO
+  description   String
+  amount        Float
+  currency      String    @default("ARS")
+  date          DateTime
+  
+  agencyId      String
+  agency        Agency    @relation(fields: [agencyId], references: [id])
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model PlanChangeRequest {
+  id              String    @id @default(cuid())
+  agencyId        String
+  agency          Agency    @relation(fields: [agencyId], references: [id])
+  currentPlan     String
+  requestedPlan   String
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  paymentAlias    String?
+  notes           String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
